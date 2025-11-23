@@ -1,0 +1,1339 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Lexo  </title>
+
+<!-- MathJax for LaTeX rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#111419; --glass:#0f1418AA;
+    --accent:#4fc3f7; --accent-2:#81d4fa; --muted:#9aa3ab; --text:#e6eef6;
+    --ai-bubble:#222833;
+    --weather-bg: linear-gradient(90deg, rgba(15,18,22,0.6), rgba(18,22,28,0.6));
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:radial-gradient(circle at 10% 10%, #071018, #050608);color:var(--text);}
+  .app{display:flex;flex-direction:column;height:100vh;max-height:100vh;overflow:hidden;}
+  header{display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid rgba(255,255,255,0.02);background:linear-gradient(90deg,rgba(10,13,18,0.7),rgba(18,22,28,0.7));backdrop-filter: blur(8px);}
+  header h1{margin:0;font-size:1.05rem;color:var(--accent);text-shadow:0 0 6px rgba(79,195,247,0.15);}
+  #modes{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
+  .modeBtn{background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.12);color:var(--accent);padding:7px 10px;border-radius:10px;cursor:pointer;transition:all .18s}
+  .modeBtn.active{background:var(--accent);color:#000;font-weight:700;box-shadow:0 6px 18px rgba(79,195,247,0.12)}
+  main{flex:1;display:flex;flex-direction:column;min-height:0;/* allow flex children to scroll */}
+
+/* WEATHER PANEL */
+  #weatherPanel{margin:10px;border-radius:12px;padding:12px;background:var(--panel);box-shadow:0 6px 30px rgba(0,0,0,0.5);display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+  #weatherLeft{display:flex;gap:12px;align-items:center;min-width:220px}
+  .wIcon{width:68px;height:68px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));font-size:34px}
+  .wMain{display:flex;flex-direction:column}
+  .wTemp{font-size:1.6rem;font-weight:700;color:var(--accent)}
+  .wCond{font-size:0.95rem;color:var(--muted)}
+  .wMeta{font-size:0.85rem;color:var(--muted);margin-top:6px}
+  #weatherRight{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .small{font-size:0.88rem;color:var(--muted)}
+  #hourly{display:flex;gap:8px;overflow:auto;padding-top:10px;width:100%}
+  .hourCard{min-width:95px;padding:8px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.05));text-align:center;font-size:0.9rem}
+  .hourCard .hTime{font-size:0.82rem;color:var(--muted);margin-bottom:6px}
+  .hourCard .hTemp{font-weight:700;margin-top:6px}
+  .weatherActions{display:flex;gap:8px}
+  .btn{background:var(--accent);color:#000;padding:8px 10px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+  .outlineBtn{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 10px;border-radius:10px;cursor:pointer}
+  #weatherStatus{font-size:0.86rem;color:var(--muted);margin-top:8px;width:100%}
+
+/* CHAT */
+  #chatBox{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(180deg, rgba(15,18,22,0.25), rgba(10,12,14,0.25));margin:10px;border-radius:12px;box-shadow:inset 0 0 40px rgba(0,0,0,0.6);}
+  .bubble{max-width:84%;padding:12px 14px;border-radius:12px;line-height:1.56;position:relative;word-break:break-word;white-space:pre-wrap;animation:fadeIn .18s ease}
+  .bubble.user{align-self:flex-end;background:linear-gradient(135deg,#4fc3f7,#0288d1);color:#001;margin-left:16%}
+  .bubble.ai{align-self:flex-start;background:var(--ai-bubble);color:var(--text);margin-right:16%}
+  .bubble.ai::before{content:"";position:absolute;left:-8px;top:10px;width:8px;height:8px;border-radius:2px;background:transparent}
+  .meta{font-size:0.82rem;color:var(--muted);margin-top:8px}
+  .sources{margin-top:8px;font-size:0.95rem}
+  .sourceList{list-style:none;padding-left:0;margin:8px 0 0 0}
+  .sourceList li{margin-bottom:8px}
+  .sourceList a{color:var(--accent-2);text-decoration:none}
+  #inputArea{display:flex;gap:8px;padding:12px;border-top:1px solid rgba(255,255,255,0.02);background:linear-gradient(180deg, rgba(10,13,18,0.9), rgba(6,8,10,0.95));}
+  #userQuery{flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:rgba(10,12,14,0.6);color:var(--text);outline:none;font-size:15px}
+  #sendBtn{background:var(--accent);color:#000;padding:10px 14px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
+  .smallBtn{background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted);padding:10px 12px;border-radius:8px;cursor:pointer}
+  .typing{font-style:italic;color:var(--muted)}
+  iframe{width:100%;max-width:420px;height:240px;border-radius:10px;border:none;margin-top:10px}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  /* scrollbar */
+  #chatBox::-webkit-scrollbar{width:8px}
+  #chatBox::-webkit-scrollbar-thumb{background:rgba(79,195,247,0.12);border-radius:10px}
+  /* mobile */
+  @media (max-width:720px){
+    .bubble.user{margin-left:8%}
+    .bubble.ai{margin-right:8%}
+    header{padding:10px}
+    iframe{height:200px}
+    #weatherPanel{flex-direction:column;align-items:flex-start}
+    #weatherRight{align-items:flex-start}
+  }
+  /* small helpers */
+  .note{font-size:0.9rem;color:var(--muted);margin-top:6px}
+  .big-title{font-size:1.18rem;color:var(--accent)}
+  .controls{display:flex;gap:8px;align-items:center}
+
+
+/* Try these selectors — one of them will hide the hourly forecast */
+#hourly, .hourly, .hourly-forecast, [data-testid="hourly"], .forecast-hourly {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Works for all screen sizes */
+@media screen and (max-width: 768px) {
+  #hourly, .hourly, .hourly-forecast, [data-testid="hourly"], .forecast-hourly {
+    display: none !important;
+  }
+}
+
+
+/* Completely hide weather UI */
+#weather-container {
+    display: none !important;
+    visibility: hidden;
+    opacity: 0;
+    height: 0;
+    width: 0;
+    overflow: hidden;
+}
+
+#weather-container {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    pointer-events: none !important;
+}
+
+.weather-box,
+.hourly-weather,
+.location-info,
+.sun-info,
+.wind-humidity,
+.refresh-btn {
+    display: none !important;
+}
+
+/* Hide weather card for mobile and tablet screens */
+@media only screen and (max-width: 1024px) {
+    .weather-card,
+    #weather-card,
+    #weather-container,
+    .weather-info,
+    .weather-box,
+    #right-section,
+    .right-panel {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        height: 0 !important;
+        width: 0 !important;
+        overflow: hidden !important;
+        pointer-events: none !important;
+        position: absolute !important;
+    }
+}
+
+/* Completely hide weather UI on phones */
+@media only screen and (max-width: 1024px) {
+  #weatherPanel {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      height: 0 !important;
+      width: 0 !important;
+      overflow: hidden !important;
+      position: absolute !important;
+      pointer-events: none !important;
+  }
+}
+
+
+/* === PERMANENT WEATHER PANEL REMOVAL === */
+#weatherPanel,
+#hourly,
+#weather-container,
+.weather-box,
+.hourly-weather,
+.weather-card,
+.weather-info,
+#right-section,
+.right-panel,
+#weatherRight,
+#weatherLeft,
+#wIcon,
+#wTemp,
+#wCond,
+#wMeta,
+#wLocation,
+#weatherUpdated,
+#refreshWeather,
+#weatherStatus {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  pointer-events: none !important;
+  z-index: -9999 !important;
+}
+
+/* Prevent weather JS code from showing blank space */
+main {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+
+
+
+
+
+/* === Mobile-friendly input area for small screens === */
+@media (max-width: 720px) {
+  #inputArea {
+    display: flex !important;      /* ensure flex layout */
+    flex-wrap: wrap !important;    /* allow buttons to move to next line */
+    gap: 6px !important;           /* spacing between elements */
+    justify-content: flex-start !important;
+  }
+
+  #inputArea input#userQuery {
+    flex: 1 1 100% !important;     /* input takes full width on mobile */
+    min-width: 0 !important;       /* prevent overflow */
+  }
+
+  #inputArea button,
+  #inputArea .smallBtn {
+    flex: 1 1 auto !important;     /* allow buttons to shrink/expand */
+    min-width: 100px !important;   /* minimum width for tap */
+    box-sizing: border-box !important;
+  }
+}
+
+
+
+
+
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>▣ Lexo  </h1>
+    <div class="controls">
+      <div id="modes" aria-hidden="false">
+        <button class="modeBtn active" data-mode="chat">💬 Chat</button>
+        <button class="modeBtn" data-mode="solve">🧮 Solve</button>
+        <button class="modeBtn" data-mode="write">✍️ Write</button>
+        <button class="modeBtn" data-mode="explain">📚 Explain</button>
+        <button class="modeBtn" data-mode="youtube">🎥 YouTube</button>
+        
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- WEATHER PANEL (auto shown on load) -->
+    <div id="weatherPanel" aria-live="polite" role="region" aria-label="Weather information">
+      <div id="weatherLeft">
+        <div class="wIcon" id="wIcon">⛅</div>
+        <div class="wMain">
+          <div style="display:flex;gap:10px;align-items:center;">
+            <div>
+              <div id="wTemp" class="wTemp">--°C</div>
+              <div id="wCond" class="wCond">Loading weather…</div>
+            </div>
+            <div style="margin-left:8px;">
+              <div id="wLocation" class="wCond">—</div>
+            </div>
+          </div>
+          <div class="wMeta" id="wMeta">Wind: — | Humidity: — | Feels like: —</div>
+        </div>
+      </div>
+
+      <div id="weatherRight">
+        <div class="weatherActions">
+          <button id="refreshWeather" class="btn">Refresh</button>
+
+        </div>
+        <div class="small" id="weatherUpdated">—</div>
+      </div>
+
+      <div style="width:100%;margin-top:12px;">
+        <div id="hourly" aria-live="polite"></div>
+        <div id="weatherStatus"></div>
+      </div>
+    </div>
+
+    <div id="chatBox" aria-live="polite" role="log"></div>
+
+    <div id="inputArea">
+      <input id="userQuery" autocomplete="off" placeholder="Ask me anything — I will search the web live and answer..." />
+      <button id="sendBtn">Send</button>
+      <button class="smallBtn" id="clearBtn">Clear</button>
+      <button id="stopBtn" class="smallBtn" style="margin-left:8px;">Stop</button>
+    </div>
+  </main>
+</div>
+
+<script>
+
+ 
+
+/* === CONFIG - Replace with your keys BEFORE using === */
+const GOOGLE_API_KEY = "AIzaSyDKaZAHsw6ldmi80IoS2UnbljEoSiX2hTQ";
+const SEARCH_ENGINE_ID = "2487a1b39dee24fde"; // cx
+const YOUTUBE_API_KEY = " AIzaSyDEWJDSeA7HZEFuHzTCzQ1l-fZktmo8rjU";
+const OPENAI_API_KEY = "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";
+
+/* === STATE & UI refs === */
+const chatBox = document.getElementById('chatBox');
+/* === Name Memory Feature === */
+let userName = localStorage.getItem("lexoUserName") || "";
+
+function detectAndStoreName(input) {
+  const match = input.match(/(?:my name is|I'm|I am)\s+([A-Za-z]+)(?:\s|$|\.)/i);
+  if (match) {
+    userName = match[1].trim();
+    localStorage.setItem("lexoUserName", userName);
+    appendSystem(`✅ Got it! I'll remember your name, ${userName}.`);
+  }
+}
+
+function getNameAwarePrompt(q) {
+  if (!userName) return q;
+  return `(${userName} asked:) ` + q;
+}
+
+const userQuery = document.getElementById('userQuery');
+const sendBtn = document.getElementById('sendBtn');
+const clearBtn = document.getElementById('clearBtn');
+let currentMode = 'chat';
+let memory = []; // very short term memory (last topics)
+const MODE_BUTTONS = document.querySelectorAll('.modeBtn');
+
+/* Weather UI refs */
+const wIcon = document.getElementById('wIcon');
+const wTemp = document.getElementById('wTemp');
+const wCond = document.getElementById('wCond');
+const wMeta = document.getElementById('wMeta');
+const wLocation = document.getElementById('wLocation');
+const hourlyEl = document.getElementById('hourly');
+const refreshWeatherBtn = document.getElementById('refreshWeather');
+const weatherUpdated = document.getElementById('weatherUpdated');
+const weatherStatus = document.getElementById('weatherStatus');
+const toggleHourlyBtn = document.getElementById('toggleHourly');
+const copyLocationBtn = document.getElementById('copyLocation');
+
+let lastCoords = null;
+let lastWeatherData = null;
+
+/* === UI helpers === */
+function safeHtml(s){ if(s==null) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+function appendBubble(text, who='ai', meta=''){
+  const div = document.createElement('div');
+  div.className = 'bubble ' + (who==='user' ? 'user' : 'ai');
+  div.innerHTML = safeHtml(text).replace(/\n/g,'<br>');
+  if(meta) div.insertAdjacentHTML('beforeend', `<div class="meta">${safeHtml(meta)}</div>`);
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  return div;
+}
+function appendSystem(text){
+  const div = document.createElement('div');
+  div.className = 'bubble ai';
+  div.style.background = 'transparent';
+  div.style.color = 'var(--muted)';
+  div.textContent = text;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  return div;
+}
+function clearChat(){ chatBox.innerHTML=''; memory = []; appendSystem('Chat cleared.'); }
+
+/* mode switching */
+MODE_BUTTONS.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    currentMode = btn.dataset.mode;
+    MODE_BUTTONS.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    appendSystem(`Switched to ${currentMode.toUpperCase()} mode.`);
+  });
+});
+
+/* keyboard + buttons */
+sendBtn.addEventListener('click', ()=>sendMessage());
+clearBtn.addEventListener('click', clearChat);
+userQuery.addEventListener('keypress', (e)=>{ if(e.key==='Enter') sendMessage(); });
+
+/* === Utility: small typing effect for AI (simulated streaming) === */
+async function typeToElement(el, text, speed=6){
+  el.innerHTML = '';
+  for (let i=0; i<text.length; i++){
+    el.innerHTML += safeHtml(text[i]);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    await new Promise(r => setTimeout(r, speed));
+  }
+}
+
+/* === Google Custom Search === */
+async function googleSearch(query){
+  if(!GOOGLE_API_KEY || !SEARCH_ENGINE_ID) return [];
+  try {
+    const url = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(GOOGLE_API_KEY)}&cx=${encodeURIComponent(SEARCH_ENGINE_ID)}&q=${encodeURIComponent(query)}&num=5`;
+    const r = await fetch(url);
+    if(!r.ok){ console.error('Google search error', await r.text()); return []; }
+    const data = await r.json();
+    return (data.items || []).map(it => ({ title: it.title, snippet: it.snippet, link: it.link }));
+  } catch(err) { console.error(err); return []; }
+}
+
+/* === YouTube search === */
+async function youtubeSearch(query){
+  if(!YOUTUBE_API_KEY) return [];
+  try {
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=3&type=video&q=${encodeURIComponent(query)}&key=${encodeURIComponent(YOUTUBE_API_KEY)}`;
+    const r = await fetch(url);
+    if(!r.ok){ console.error('YouTube search error', await r.text()); return []; }
+    const data = await r.json();
+    return (data.items || []).map(it => ({ id: it.id.videoId, title: it.snippet.title }));
+  } catch(err){ console.error(err); return []; }
+}
+
+/* === Insert sources UI === */
+function showSources(sources, attachElement){
+  if(!sources || sources.length===0) return;
+  const container = document.createElement('div');
+  container.className = 'sources';
+  container.innerHTML = `<strong>Sources:</strong><ul class="sourceList"></ul>`;
+  const ul = container.querySelector('ul');
+  sources.forEach(s => {
+    const li = document.createElement('li');
+    li.innerHTML = `<a href="${s.link}" target="_blank" rel="noopener noreferrer">${safeHtml(s.title)}</a><div class="meta">${safeHtml(s.snippet)}</div>`;
+    ul.appendChild(li);
+  });
+  attachElement.parentNode.insertBefore(container, attachElement.nextSibling);
+}
+
+/* === YouTube embed === */
+function appendYouTube(id, title){
+  const div = document.createElement('div');
+  div.className = 'bubble ai';
+  div.innerHTML = `<strong>${safeHtml(title)}</strong><br><iframe src="https://www.youtube.com/embed/${id}" allowfullscreen></iframe>`;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  return div;
+}
+
+/* === OpenAI Chat call (single shot) === */
+async function callOpenAI(messages, opts={}){
+  if(!OPENAI_API_KEY) throw new Error('Missing OpenAI key');
+  const payload = {
+    model: opts.model || 'gpt-4o-mini',
+    messages,
+    max_tokens: opts.max_tokens || 800,
+    temperature: ('temperature' in opts) ? opts.temperature : 0.8,
+    top_p: opts.top_p || 1,
+    presence_penalty: opts.presence_penalty ?? 0.3,
+    frequency_penalty: opts.frequency_penalty ?? 0.2
+  };
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + OPENAI_API_KEY },
+    body: JSON.stringify(payload)
+  });
+  if(!res.ok){
+    const t = await res.text();
+    console.error('OpenAI API error', t);
+    throw new Error('OpenAI API error: ' + t);
+  }
+  const data = await res.json();
+  return data;
+}
+
+/* === Long essay generator (chunked) === */
+async function generateLongEssay(title, liveResults=[], targetWords=5000){
+  const system = `You are Lexo — a humanlike writer. Produce a long, coherent essay on the topic: "${title}". 
+Be creative, emotional, logical, and natural. Use live search results when present. Don't mention that you are an AI.
+Break the essay into numbered sections. Each chunk should end at a natural paragraph boundary.`;
+  const context = (liveResults||[]).map((r,i)=>`${i+1}. ${r.title}\n${r.snippet}\n${r.link}`).join('\n\n');
+  let content = '';
+  let part = 1;
+  const maxParts = 20;
+  let approxWords = 0;
+  while(approxWords < targetWords && part <= maxParts){
+    const promptUser = `Essay Part ${part} for "${title}". Write ~${Math.min(800, Math.floor((targetWords-approxWords)/Math.max(1,(maxParts-part+1))))} words for this part. If context available include relevant facts with subtle citation numbers. Stop at a natural paragraph boundary. If this is not the final part, add the line: "---CONTINUE---" at the end.`;
+    const messages = [
+      { role: 'system', content: system },
+      { role: 'user', content: context ? ('Live data:\n' + context) : 'No live data available.' },
+      { role: 'user', content: promptUser }
+    ];
+    let aiText = '';
+    try {
+      const data = await callOpenAI(messages, { max_tokens: 1200, temperature: 0.9, model: 'gpt-4o-mini' });
+      aiText = data.choices?.[0]?.message?.content || '';
+    } catch(err){
+      console.error('Chunk error', err);
+      aiText = '\n\n[Error generating further content — API error or limit reached]';
+      content += aiText;
+      break;
+    }
+    content += '\n\n' + aiText;
+    approxWords = content.split(/\s+/).filter(Boolean).length;
+    const chunkBubble = appendBubble('', 'ai');
+    await typeToElement(chunkBubble, aiText, 2);
+    if(!aiText.includes('---CONTINUE---') && approxWords >= targetWords) {
+      break;
+    }
+    part++;
+    await new Promise(r=>setTimeout(r, 600));
+  }
+  return content;
+}
+
+/* === Main send flow === */
+async function sendMessage(){
+  const q = userQuery.value.trim();
+detectAndStoreName(q);
+
+  if(!q) return;
+  appendBubble(q, 'user');
+  userQuery.value = '';
+  appendBubble('🔎 Looking up for your response...', 'ai');
+  let live = [];
+  try {
+    live = await googleSearch(q);
+  } catch(e){ console.warn('Live search failed', e); live = []; }
+
+  if(currentMode === 'youtube'){
+    try {
+      const vids = await youtubeSearch(q);
+      if(!vids.length){
+        appendBubble('⚠️ No relevant videos found.', 'ai');
+        return;
+      }
+      appendBubble(`Found ${vids.length} video(s):`, 'ai');
+      vids.forEach(v => appendYouTube(v.id, v.title));
+      return;
+    } catch(e){ appendBubble('⚠️ YouTube lookup error', 'ai'); return; }
+  }
+
+  if(currentMode === 'write'){
+    appendSystem('✍️ Generating creative long-form content. This may take a few moments...');
+    try {
+      const targetWords = 4000;
+      const essay = await generateLongEssay(q, live, targetWords);
+      appendSystem(`✅ Finished generating (approx ${essay.split(/\s+/).length} words).`);
+      memoryPush({type:'write',topic:q});
+      return;
+    } catch(err){
+      console.error('Write error', err);
+      appendBubble('⚠️ Error while generating essay. Try again or lower the requested length.', 'ai');
+      return;
+    }
+  }
+
+  if(currentMode === 'solve'){
+    const messages = [
+      { role: 'system', content: 'You are Lexo — a logical problem solver. Show full step-by-step reasoning using math and LaTeX if needed.' },
+      { role: 'user', content: `Question: ${q}\n\nUse live context if available:\n${live.map((r,i)=>`${i+1}. ${r.title} - ${r.snippet}`).join('\n')}` }
+    ];
+    try {
+      const res = await callOpenAI(messages, { max_tokens: 1200, temperature: 0.05, model: 'gpt-4o-mini' });
+      const out = res.choices?.[0]?.message?.content || 'No response.';
+      const bubble = appendBubble('', 'ai');
+      await typeToElement(bubble, out, 2);
+      if(out.includes('\\(') || out.includes('$$') || out.includes('\\[')) MathJax.typeset();
+      memoryPush({type:'solve',topic:q});
+    } catch(err){
+      console.error(err); appendBubble('⚠️ Solve failed: ' + err.message, 'ai');
+    }
+    return;
+  }
+
+  const baseSystem = currentMode === 'explain'
+    ? 'You are Lexo — a patient teacher. Explain step-by-step from basics to advanced.'
+    : 'You are Lexo — a friendly, humanlike conversational assistant. Use empathy, humor, and clarity.';
+
+  const context = (live||[]).slice(0,5).map((r,i)=>`${i+1}. ${r.title}: ${r.snippet} (${r.link})`).join('\n\n');
+  const userPrompt = `User query: ${q}\n\nLive search results (use them to ground factual claims):\n${context ? context : 'No live results found.'}\n\nAnswer the user in a natural human tone. If facts are taken from live results, cite them briefly like [1]. If no live data is available, answer from general knowledge but say "based on general knowledge" once.`;
+
+  const messages = [
+    { role: 'system', content: baseSystem },
+    { role: 'user', content: userPrompt }
+  ];
+
+  try {
+    const res = await callOpenAI(messages, { max_tokens: 900, temperature: 0.9, model: 'gpt-4o-mini' });
+    const reply = res.choices?.[0]?.message?.content || 'No response.';
+    const bubble = appendBubble('', 'ai');
+    await typeToElement(bubble, reply, 4);
+    if(live.length) showSources(live.slice(0,5), bubble);
+    memoryPush({type: currentMode, topic: q});
+  } catch(err){
+    console.error(err);
+    appendBubble('⚠️ Error fetching AI response. Check your connection.or rephase your question', 'ai');
+  }
+}
+
+/* memory helper */
+function memoryPush(item){
+  memory.push(item.topic || item);
+  if(memory.length > 12) memory.shift();
+}
+
+/* small boot message */
+appendSystem('Hello — Lexo is ready. Choose a mode and type your query.');
+
+/* === STOP / RESUME HANDLER === */
+let stopAI = false;
+const originalTypeToElement = typeToElement;
+typeToElement = async function(el, text, speed=6){
+    el.innerHTML = '';
+    for (let i = 0; i < text.length; i++){
+        if(stopAI) {
+            el.innerHTML += '<br>⚠️ Response stopped by user.';
+            break;
+        }
+        el.innerHTML += safeHtml(text[i]);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        await new Promise(r => setTimeout(r, speed));
+    }
+};
+const stopBtn = document.getElementById('stopBtn');
+stopBtn.addEventListener('click', () => {
+    stopAI = true;
+});
+const originalSendMessage = sendMessage;
+sendMessage = async function(...args){
+    stopAI = false;
+    return originalSendMessage.apply(this, args);
+};
+
+/* ==========================
+   WEATHER FUNCTIONS (Open-Meteo)
+   - Uses navigator.geolocation, with IP fallback
+   - Fetches current_weather + hourly via Open-Meteo
+   - Reverse geocoding via open-meteo geocoding
+   ========================== */
+
+function weatherCodeToIcon(code){
+  // condensed mapping (Open-Meteo weathercode)
+  // returns emoji + text short
+  const map = {
+    0: ['☀️','Clear'],
+    1: ['🌤','Mainly clear'],
+    2: ['⛅','Partly cloudy'],
+    3: ['☁️','Overcast'],
+    45: ['🌫','Fog'],
+    48: ['🌫','Depositing rime fog'],
+    51: ['🌦','Light drizzle'],
+    53: ['🌦','Moderate drizzle'],
+    55: ['🌧','Dense drizzle'],
+    56: ['🌧','Freezing drizzle'],
+    57: ['🌧','Dense freezing drizzle'],
+    61: ['🌧','Slight rain'],
+    63: ['🌧','Moderate rain'],
+    65: ['🌧','Heavy rain'],
+    66: ['🌧','Freezing rain'],
+    67: ['🌧','Heavy freezing rain'],
+    71: ['🌨','Slight snow'],
+    73: ['🌨','Moderate snow'],
+    75: ['❄️','Heavy snow'],
+    77: ['❄️','Snow grains'],
+    80: ['🌧','Rain showers'],
+    81: ['🌧','Moderate showers'],
+    82: ['🌧','Violent showers'],
+    85: ['❄️','Slight snow showers'],
+    86: ['❄️','Heavy snow showers'],
+    95: ['⛈','Thunderstorm'],
+    96: ['⛈','Thunderstorm with slight hail'],
+    99: ['⛈','Thunderstorm with heavy hail']
+  };
+  return map[code] || ['❓','Unknown'];
+}
+
+function formatTimeISOToLocal(iso, tz){
+  // new Date(iso) in client's local timezone; returns hh:mm or label like 'Now' if same hour
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  } catch(e){ return iso; }
+}
+
+async function reverseGeocode(lat, lon){
+  try {
+    const url = `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&count=1&language=en`;
+    const r = await fetch(url);
+    if(!r.ok) return null;
+    const j = await r.json();
+    if(j && j.results && j.results.length) return j.results[0]; // contains name, admin1, country
+    return null;
+  } catch(e){ console.warn('reverse geocode error', e); return null; }
+}
+
+async function fetchWeather(lat, lon){
+  // Build Open-Meteo request
+  // We'll request hourly: temperature_2m, apparent_temperature, precipitation_probability, precipitation, weathercode, windspeed_10m, relativehumidity_2m (if available)
+  const params = new URLSearchParams({
+    latitude: lat,
+    longitude: lon,
+    hourly: 'temperature_2m,apparent_temperature,precipitation_probability,precipitation,weathercode,windspeed_10m,relativehumidity_2m',
+    current_weather: 'true',
+    timezone: 'auto',
+    forecast_days: 2
+  });
+  const url = 'https://api.open-meteo.com/v1/forecast?' + params.toString();
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('Weather fetch failed: ' + r.status);
+  const data = await r.json();
+  return data;
+}
+
+function showWeatherData(data, lat, lon, place=null){
+  lastWeatherData = data;
+  lastCoords = {lat, lon};
+  // current
+  const cw = data.current_weather || {};
+  const tz = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const currentTimeISO = (function(){
+    if(cw.time) return cw.time;
+    // fallback: use hourly time index 0
+    return data.hourly?.time?.[0];
+  })();
+
+  // find index in hourly arrays that matches current time
+  let idx = 0;
+  if(data.hourly && currentTimeISO){
+    idx = data.hourly.time.indexOf(currentTimeISO);
+    if(idx === -1) idx = 0;
+  }
+
+  // get humidity and apparent temp if present
+  const temp = (typeof cw.temperature !== 'undefined') ? cw.temperature : (data.hourly?.temperature_2m?.[idx]);
+  const apparentTemp = data.hourly?.apparent_temperature?.[idx] ?? null;
+  const wind = (typeof cw.windspeed !== 'undefined') ? cw.windspeed : data.hourly?.windspeed_10m?.[idx];
+  const code = (typeof cw.weathercode !== 'undefined') ? cw.weathercode : data.hourly?.weathercode?.[idx] ?? null;
+  const humidity = data.hourly?.relativehumidity_2m?.[idx] ?? null;
+
+  const [iconEmoji, iconText] = weatherCodeToIcon(code);
+
+  wIcon.textContent = iconEmoji;
+  wTemp.textContent = (Math.round(temp*10)/10) + '°C';
+  wCond.textContent = iconText + (apparentTemp ? ` • feels ${Math.round(apparentTemp)}°C` : '');
+  wLocation.textContent = place ? `${place.name}${place.admin1 ? ', ' + place.admin1 : ''}${place.country ? ', ' + place.country : ''}` : `Lat ${lat.toFixed(3)}, Lon ${lon.toFixed(3)}`;
+  wMeta.textContent = `Wind: ${wind ?? '—'} m/s | Humidity: ${humidity ?? '—'}% | Timezone: ${tz}`;
+
+  // hourly forecast: next 12 hours from now (based on idx)
+  hourlyEl.innerHTML = '';
+  const start = idx;
+  const hoursToShow = 12;
+  for(let i = start; i < Math.min((data.hourly.time.length), start + hoursToShow); i++){
+    const timeISO = data.hourly.time[i];
+    const hrTemp = data.hourly.temperature_2m[i];
+    const hrCode = data.hourly.weathercode[i];
+    const hrWind = data.hourly.windspeed_10m[i];
+    const hrPrecipProb = data.hourly.precipitation_probability?.[i] ?? data.hourly.precipitation?.[i] ? (data.hourly.precipitation_probability?.[i] ?? 0) : 0;
+    const [hEmoji, hText] = weatherCodeToIcon(hrCode);
+    const card = document.createElement('div');
+    card.className = 'hourCard';
+    const label = formatTimeISOToLocal(timeISO, tz);
+    card.innerHTML = `<div class="hTime">${label}</div>
+                      <div style="font-size:20px">${hEmoji}</div>
+                      <div class="hTemp">${Math.round(hrTemp)}°C</div>
+                      <div style="margin-top:6px;font-size:0.82rem;color:var(--muted)">${Math.round(hrPrecipProb)}%</div>
+                      <div style="font-size:0.82rem;color:var(--muted);margin-top:6px">${Math.round(hrWind)} m/s</div>`;
+    hourlyEl.appendChild(card);
+  }
+
+  const updatedAt = new Date().toLocaleString();
+  weatherUpdated.textContent = `Last updated: ${updatedAt}`;
+  weatherStatus.textContent = '';
+}
+
+/* Main get location -> get weather flow */
+async function updateWeather(force=false){
+  weatherStatus.textContent = 'Getting location…';
+  try {
+    let coords = null;
+    // try navigator geolocation first
+    if(navigator.geolocation && !force){
+      // if user has already allowed, this resolves quickly; otherwise it may prompt
+      coords = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(()=>reject(new Error('Geolocation timed out')), 10000);
+        navigator.geolocation.getCurrentPosition(pos => {
+          clearTimeout(timeout);
+          resolve({lat: pos.coords.latitude, lon: pos.coords.longitude});
+        }, err => {
+          clearTimeout(timeout);
+          reject(err);
+        }, {maximumAge: 600000, timeout: 10000});
+      }).catch(e => {
+        console.warn('geolocation error or denied', e);
+        return null;
+      });
+    }
+
+    // If geolocation failed, fallback to IP-based lookup (best-effort)
+    if(!coords){
+      weatherStatus.textContent = 'Using IP-based location as fallback (approximate).';
+      try {
+        const r = await fetch('https://ipapi.co/json/');
+        if(r.ok){
+          const j = await r.json();
+          if(j && j.latitude && j.longitude) coords = {lat: parseFloat(j.latitude), lon: parseFloat(j.longitude)};
+        }
+      } catch(e){ console.warn('ip fallback error', e); }
+    }
+
+    if(!coords){
+      weatherStatus.textContent = 'Could not determine location. Please allow location access or try Refresh.';
+      return;
+    }
+
+    weatherStatus.textContent = 'Fetching weather…';
+    const data = await fetchWeather(coords.lat, coords.lon);
+    const place = await reverseGeocode(coords.lat, coords.lon);
+    showWeatherData(data, coords.lat, coords.lon, place);
+  } catch(err){
+    console.error('updateWeather error', err);
+    weatherStatus.textContent = 'Error fetching weather: ' + (err.message || err);
+  }
+}
+
+/* initial load */
+updateWeather();
+
+/* buttons */
+refreshWeatherBtn.addEventListener('click', ()=>{ updateWeather(true); });
+toggleHourlyBtn.addEventListener('click', ()=>{
+  if(hourlyEl.style.display === 'none'){
+    hourlyEl.style.display = 'flex';
+    toggleHourlyBtn.textContent = 'Hide hourly';
+  } else {
+    hourlyEl.style.display = 'none';
+    toggleHourlyBtn.textContent = 'Show hourly';
+  }
+});
+copyLocationBtn.addEventListener('click', ()=>{
+  if(!lastCoords) return;
+  const txt = `${lastCoords.lat.toFixed(6)},${lastCoords.lon.toFixed(6)}`;
+  navigator.clipboard?.writeText(txt).then(()=> {
+    weatherStatus.textContent = 'Coordinates copied to clipboard.';
+    setTimeout(()=> weatherStatus.textContent = '', 2500);
+  }).catch(()=> weatherStatus.textContent = 'Could not copy coordinates.');
+});
+
+/* === END WEATHER FUNCTIONS === */
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  const hourlySections = Array.from(document.querySelectorAll("div, section"))
+    .filter(el => el.textContent.match(/\d{1,2}:\d{2}\s?(AM|PM)/));
+  hourlySections.forEach(el => {
+    el.style.display = "none";
+    el.style.visibility = "hidden";
+    el.style.height = "0";
+  });
+});
+
+
+
+(function(){
+    // Prevent double initialization
+    if(window.LexoEnhancedWrapper) return;
+    window.LexoEnhancedWrapper = true;
+
+    /** --- Helper: Detect short or vague responses --- */
+    function isShortOrVague(text){
+        if(!text) return false;
+        const t = text.trim().toLowerCase();
+        const vagueWords = ['yes','no','ok','yeah','yep','nope','nah','sure','maybe','hmm','alright'];
+        return t.length <= 3 || vagueWords.includes(t);
+    }
+
+    /** --- Wrap sendMessage to preprocess user input --- */
+    const originalSendMessage = window.sendMessage;
+    window.sendMessage = async function(...args){
+        const inputEl = document.getElementById('userQuery');
+        let q = inputEl.value.trim();
+        if(!q) return;
+
+        // If short/vague or ambiguous, inject memory/context
+        if(isShortOrVague(q) && Array.isArray(window.memory) && window.memory.length > 0){
+            const lastTopic = window.memory[window.memory.length - 1] || '';
+            q = `User responded "${q}" regarding previous topic: "${lastTopic}". 
+Interpret intent carefully, understand the user's likely meaning, and respond fully, clearly, and naturally as a humanlike AI would.`;
+        }
+
+        // Preserve original input
+        const originalValue = inputEl.value;
+        inputEl.value = q;
+
+        // Call the original sendMessage
+        const result = await originalSendMessage.apply(this, args);
+
+        // Restore input field
+        inputEl.value = originalValue;
+        return result;
+    };
+
+    /** --- Wrap OpenAI call to enforce deep, context-aware reasoning --- */
+    const originalCallOpenAI = window.callOpenAI;
+    window.callOpenAI = async function(messages, opts={}){
+        if(Array.isArray(messages) && messages.length > 0 && messages[0].role === 'system'){
+            // Enhance system prompt to handle short/ambiguous responses
+            messages[0].content = messages[0].content + 
+            `
+
+ALWAYS:
+- Detect if the user input is short, vague, or ambiguous.
+- Use previous conversation memory or context to understand the user.
+- Provide a thoughtful, accurate, humanlike answer.
+- If live data is available (Google/Youtube/Weather), incorporate it naturally.
+- Answer in a clear, complete, and prescriptive manner, like ChatGPT or Gemini.`;
+        }
+        return originalCallOpenAI.apply(this, arguments);
+    };
+
+    /** --- Optional: Log wrapper initialization --- */
+    console.log("Lexo Enhanced Wrapper Initialized: context-aware, humanlike AI responses enabled.");
+})();
+
+
+
+(function() {
+    const buttonStyle = `
+        background:#ff0000; /* YouTube red */
+        color:#fff;
+        border:none;
+        padding:10px 16px;
+        border-radius:4px;
+        cursor:pointer;
+        margin-left:5px;
+        font-size:14px;
+        font-weight:bold;
+        transition:0.3s;
+    `;
+
+    function createNewChatButton() {
+        const newChatBtn = document.createElement('button');
+        newChatBtn.id = 'newChatBtn';
+        newChatBtn.style.cssText = buttonStyle;
+        newChatBtn.textContent = 'New Chat';
+
+        newChatBtn.addEventListener('click', () => {
+            chatHistory = [];
+            sessionVariables = {};
+            if(chatBox) chatBox.innerHTML = '';
+            addMessage('ai', '🆕 New chat started. How can I help you?');
+        });
+
+        return newChatBtn;
+    }
+
+    // --- CHAT STATE ---
+    let chatHistory = [];
+    let sessionVariables = {};
+    let chatBox = document.getElementById('chatBox');
+    if(!chatBox){
+        chatBox = document.createElement('div');
+        chatBox.id = 'chatBox';
+        chatBox.style.cssText = 'border:1px solid #555; height:400px; overflow:auto; padding:10px; margin-top:10px; display:flex; flex-direction:column;';
+        document.body.appendChild(chatBox);
+    }
+
+    function addMessage(role, text) {
+        const div = document.createElement('div');
+        div.className = `message ${role}`;
+        div.textContent = text;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        chatHistory.push({ role, content: text });
+    }
+
+    // --- WAIT UNTIL YOUTUBE BUTTON EXISTS ---
+    const interval = setInterval(() => {
+        const youtubeBtn = document.getElementById('youtubeBtn');
+        if (youtubeBtn && youtubeBtn.parentNode) {
+            const newChatBtn = createNewChatButton();
+            youtubeBtn.parentNode.insertBefore(newChatBtn, youtubeBtn.nextSibling);
+            clearInterval(interval);
+        }
+    }, 300);
+
+    // --- BASIC CSS ---
+    if(!document.getElementById('chatStyle')){
+        const style = document.createElement('style');
+        style.id = 'chatStyle';
+        style.innerHTML = `
+            .message { padding:8px; margin:5px 0; border-radius:8px; max-width:80%; }
+            .message.ai { background:#e0e0e0; align-self:flex-start; }
+            .message.user { background:#90caf9; color:#000; align-self:flex-end; }
+        `;
+        document.head.appendChild(style);
+    }
+
+})();
+
+
+
+
+</script>
+
+
+
+
+
+
+
+
+
+
+<script>
+(async function(){
+    if(window.LexoMemoryAI) return;
+    window.LexoMemoryAI = true;
+
+    const DB_NAME = "LexoAIChatDB";
+    const STORE_NAME = "chatMemory";
+    const OPENAI_API_KEY = "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"; // put your OpenAI key
+    let db;
+
+    // --- IndexedDB init ---
+    async function openDB(){
+        return new Promise((resolve,reject)=>{
+            const request = indexedDB.open(DB_NAME,1);
+            request.onupgradeneeded = e=>{
+                db = e.target.result;
+                if(!db.objectStoreNames.contains(STORE_NAME)){
+                    db.createObjectStore(STORE_NAME,{keyPath:"id",autoIncrement:true});
+                }
+            };
+            request.onsuccess = e=>{ db = e.target.result; resolve(db); };
+            request.onerror = e=>reject(e);
+        });
+    }
+
+    // --- Add message ---
+    async function addMessage(role,text){
+        const database = db || await openDB();
+        const tx = database.transaction(STORE_NAME,"readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        store.add({role,text,timestamp:Date.now()});
+        return tx.complete;
+    }
+
+    // --- Get last N messages ---
+    async function getLastMessages(limit=50){
+        const database = db || await openDB();
+        const tx = database.transaction(STORE_NAME,"readonly");
+        const store = tx.objectStore(STORE_NAME);
+        return new Promise(resolve=>{
+            const results=[];
+            store.openCursor(null,'prev').onsuccess=e=>{
+                const cursor=e.target.result;
+                if(cursor && results.length<limit){
+                    results.push(cursor.value);
+                    cursor.continue();
+                } else resolve(results.reverse());
+            };
+        });
+    }
+
+    // --- Detect user name ---
+    async function detectUserName(text){
+        const match = text.match(/(?:my name is|I'm|I am)\s+([A-Za-z]+)/i);
+        if(match){
+            const userName = match[1].trim();
+            localStorage.setItem("LexoUserName",userName);
+            return userName;
+        }
+        return null;
+    }
+
+    // --- Get user name ---
+    function getUserName(){
+        return localStorage.getItem("LexoUserName") || null;
+    }
+
+    // --- Lexo memory helpers ---
+    window.LexoMemory = {
+        addMessage,
+        getLastMessages,
+        detectUserName,
+        getUserName
+    };
+
+    // --- Wrap sendMessage safely ---
+    const origSendMessage = window.sendMessage;
+    if(origSendMessage){
+        window.sendMessage = async function(...args){
+            const inputEl = document.getElementById('userQuery');
+            const userText = inputEl?.value?.trim();
+            if(userText){
+                await detectUserName(userText);
+                await addMessage('user',userText);
+            }
+
+            const result = await origSendMessage.apply(this,args);
+
+            setTimeout(async ()=>{
+                const lastBubble = document.querySelector('.bubble.ai:last-child');
+                if(lastBubble){
+                    const aiText = lastBubble.textContent || lastBubble.innerText || "";
+                    if(aiText) await addMessage('ai',aiText);
+                }
+            },200);
+
+            return result;
+        }
+    }
+
+    // --- Wrap OpenAI call safely ---
+    const origCallOpenAI = window.callOpenAI;
+    if(origCallOpenAI){
+        window.callOpenAI = async function(messages, opts={}){
+            const lastMsgs = await getLastMessages(30);
+            const contextText = lastMsgs.map(m=>`${m.role}: ${m.text}`).join("\n");
+            const storedName = getUserName();
+            const namePrompt = storedName ? `User's name is ${storedName}. Remember this.\n` : "";
+
+            if(Array.isArray(messages) && messages.length>0){
+                messages[0].content = `${messages[0].content}\n\n${namePrompt}Chat History:\n${contextText}`;
+            }
+
+            // Add instruction to mention user name in responses
+            messages[0].content += "\nAlways address the user by their name if known.";
+
+            return origCallOpenAI.apply(this,arguments);
+        }
+    }
+
+    // --- Direct AI query ---
+    window.LexoQueryAI = async function(question){
+        const lastMsgs = await getLastMessages(50);
+        const context = lastMsgs.map(m=>`${m.role}: ${m.text}`).join("\n");
+        return fetch("https://api.openai.com/v1/chat/completions",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json",
+                "Authorization":`Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model:"gpt-4",
+                messages:[{role:"user",content:`Use this context:\n${context}\n\nQuestion: ${question}`}],
+                temperature:0.7,
+                max_tokens:1000
+            })
+        }).then(r=>r.json())
+        .then(d=>d.choices?.[0]?.message?.content || "⚠️ AI failed to respond")
+        .catch(e=>"⚠️ AI fetch error");
+    };
+
+    fetch("https://api.openai.com/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer YOUR_KEY_HERE",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    model: "gpt-4",
+    messages: [{role: "user", content: "Hello, test AI response"}]
+  })
+})
+.then(r => r.json())
+.then(console.log)
+.catch(console.error);
+
+
+    console.log("✅ Lexo Persistent AI Memory initialized: stores all chats, user name, context-aware responses.");
+})();
+</script>
+
+
+
+
+
+
+ <script>
+(async function(){
+    if(window.LexoSmartPersistentAI) return;
+    window.LexoSmartPersistentAI = true;
+
+    /* === CONFIG - Your API keys === */
+    const OPENAI_API_KEY = "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";
+    const GOOGLE_API_KEY = "AIzaSyDKaZAHsw6ldmi80IoS2UnbljEoSiX2hTQ";
+    const SEARCH_ENGINE_ID = "2487a1b39dee24fde";
+
+    const DB_NAME = "LexoSmartAIChatDB";
+    const STORE_NAME = "chatMemory";
+    const MAX_RETRY_MINUTES = 3;  // maximum time to retry in minutes
+    const RETRY_DELAY = 5000;     // 5 seconds per retry
+    let db;
+
+    // --- IndexedDB init ---
+    async function openDB(){
+        return new Promise((resolve,reject)=>{
+            const req = indexedDB.open(DB_NAME,1);
+            req.onupgradeneeded = e => {
+                db = e.target.result;
+                if(!db.objectStoreNames.contains(STORE_NAME)){
+                    db.createObjectStore(STORE_NAME,{keyPath:"id",autoIncrement:true});
+                }
+            };
+            req.onsuccess = e => { db = e.target.result; resolve(db); };
+            req.onerror = e => reject(e);
+        });
+    }
+
+    // --- Save message ---
+    async function addMessage(role,text){
+        const database = db || await openDB();
+        const tx = database.transaction(STORE_NAME,"readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        store.add({role,text,timestamp:Date.now()});
+        return tx.complete;
+    }
+
+    // --- Get last N messages ---
+    async function getLastMessages(limit=50){
+        const database = db || await openDB();
+        const tx = database.transaction(STORE_NAME,"readonly");
+        const store = tx.objectStore(STORE_NAME);
+        return new Promise(resolve=>{
+            const results=[];
+            store.openCursor(null,'prev').onsuccess=e=>{
+                const cursor=e.target.result;
+                if(cursor && results.length<limit){
+                    results.push(cursor.value);
+                    cursor.continue();
+                } else resolve(results.reverse());
+            };
+        });
+    }
+
+    // --- Detect user name ---
+    async function detectUserName(text){
+        const match = text.match(/(?:my name is|I'm|I am)\s+([A-Za-z]+)/i);
+        if(match){
+            const userName = match[1].trim();
+            localStorage.setItem("LexoUserName",userName);
+            return userName;
+        }
+        return null;
+    }
+
+    // --- AI response helper using OpenAI API ---
+    async function fetchAIResponse(prompt){
+        try{
+            const resp = await fetch("https://api.openai.com/v1/chat/completions",{
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json",
+                    "Authorization":`Bearer ${OPENAI_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model:"gpt-4",
+                    messages:[{role:"user",content:prompt}],
+                    max_tokens:1200,
+                    temperature:0.7
+                })
+            });
+            const data = await resp.json();
+            return data.choices?.[0]?.message?.content || null;
+        }catch(e){
+            console.error("AI fetch error:",e);
+            return null;
+        }
+    }
+
+    // --- Wrap Lexo sendMessage to store chats ---
+    const originalSendMessage = window.sendMessage;
+    if(originalSendMessage){
+        window.sendMessage = async function(...args){
+            const inputEl = document.getElementById('userQuery');
+            const userText = inputEl?.value?.trim();
+            if(userText){
+                await detectUserName(userText);
+                await addMessage('user',userText);
+            }
+
+            const result = await originalSendMessage.apply(this,args);
+
+            setTimeout(async ()=>{
+                const lastBubble = document.querySelector('.bubble.ai:last-child');
+                if(lastBubble){
+                    const aiText = lastBubble.textContent || lastBubble.innerText || "";
+                    if(aiText) await addMessage('ai',aiText);
+                }
+            },200);
+
+            return result;
+        }
+    }
+
+    // --- Wrap callOpenAI with extended retry and fallback ---
+    const originalCallOpenAI = window.callOpenAI;
+    if(originalCallOpenAI){
+        window.callOpenAI = async function(messages, opts={}){
+            const lastMsgs = await getLastMessages(50);
+            const contextText = lastMsgs.map(m=>`${m.role}: ${m.text}`).join("\n");
+            const storedName = localStorage.getItem("LexoUserName") || "";
+            const namePrompt = storedName ? `User's name is ${storedName}. Always use it.\n` : "";
+            if(Array.isArray(messages) && messages.length>0){
+                messages[0].content = `${messages[0].content}\n\n${namePrompt}Chat History Context:\n${contextText}`;
+            }
+
+            // Retry loop: up to MAX_RETRY_MINUTES
+            const maxAttempts = Math.floor((MAX_RETRY_MINUTES * 60 * 1000) / RETRY_DELAY);
+            let attempt = 0;
+            while(attempt < maxAttempts){
+                try{
+                    const result = await originalCallOpenAI.apply(this, arguments);
+                    if(result) return result;
+                }catch(err){
+                    console.warn("AI fetch failed, retrying...", attempt+1, err);
+                }
+                attempt++;
+                await new Promise(r => setTimeout(r, RETRY_DELAY));
+            }
+
+            // Fallback from memory after retries
+            let fallback = "🤖 No response could be generated after a long attempt.\n";
+            if(contextText){
+                fallback += "Based on previous conversation:\n" + contextText.split("\n").slice(-10).join("\n");
+            } else {
+                fallback += "Please try again later.";
+            }
+            return fallback;
+        }
+    }
+
+    // --- Helper to get memory ---
+    window.LexoGetMemory = async function(limit=50){
+        return await getLastMessages(limit);
+    }
+
+    console.log("🚀 Lexo Smart Persistent AI with extended retry loaded successfully. Will attempt up to 3 minutes before fallback.");
+})();
+</script>
+
+</body>
+</html>
